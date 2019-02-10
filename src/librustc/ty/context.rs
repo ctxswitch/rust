@@ -65,7 +65,7 @@ use std::sync::mpsc;
 use std::sync::Arc;
 use std::marker::PhantomData;
 use rustc_target::spec::abi;
-use syntax::ast::{self, NodeId, CRATE_NODE_ID};
+use syntax::ast::{self, NodeId};
 use syntax::attr;
 use syntax::source_map::MultiSpan;
 use syntax::edition::Edition;
@@ -2860,15 +2860,17 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         err.emit()
     }
 
-    pub fn lint_level_root_bounded(self, mut id: ast::NodeId, bound: ast::NodeId) -> ast::NodeId {
-        let sets = self.lint_level_changed(LOCAL_CRATE);
+    pub fn maybe_lint_level_root_bounded(
+        self,
+        mut id: ast::NodeId,
+        bound: ast::NodeId,
+    ) -> ast::NodeId {
         loop {
             if id == bound {
                 return bound;
             }
-            let hir_id = self.hir().node_to_hir_id(id);
-            if sets.contains(&hir_id) {
-                return id
+            if lint::maybe_lint_level_root(self, id) {
+                return id;
             }
             let next = self.hir().get_parent_node(id);
             if next == id {
@@ -2878,17 +2880,23 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    pub fn lint_level_root(self, id: ast::NodeId) -> ast::NodeId {
-        self.lint_level_root_bounded(id, CRATE_NODE_ID)
-    }
-
-    pub fn lint_level_at_node(self, lint: &'static Lint, id: NodeId)
-        -> (lint::Level, lint::LintSource)
-    {
+    pub fn lint_level_at_node(
+        self,
+        lint: &'static Lint,
+        mut id: NodeId
+    ) -> (lint::Level, lint::LintSource) {
         let sets = self.lint_levels(LOCAL_CRATE);
-        let lint_root = self.lint_level_root(id);
-        let hir_id = self.hir().definitions().node_to_hir_id(lint_root);
-        sets.level_and_source(lint, hir_id, self.sess).unwrap()
+        loop {
+            let hir_id = self.hir().definitions().node_to_hir_id(id);
+            if let Some(pair) = sets.level_and_source(lint, hir_id, self.sess) {
+                return pair
+            }
+            let next = self.hir().get_parent_node(id);
+            if next == id {
+                bug!("lint traversal reached the root of the crate");
+            }
+            id = next;
+        }
     }
 
     pub fn struct_span_lint_hir<S: Into<MultiSpan>>(self,

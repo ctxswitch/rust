@@ -308,11 +308,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         let source_scope = self.source_scope;
         let tcx = self.hir.tcx();
         if let LintLevel::Explicit(node_id) = lint_level {
-            let parent_root = tcx.lint_level_root_bounded(
+            let parent_root = tcx.maybe_lint_level_root_bounded(
                 self.source_scope_local_data[source_scope].lint_root,
                 self.hir.root_lint_level,
             );
-            let current_root = tcx.lint_level_root_bounded(node_id, self.hir.root_lint_level);
+            let current_root = tcx.maybe_lint_level_root_bounded(node_id, self.hir.root_lint_level);
 
             if parent_root != current_root {
                 self.source_scope = self.new_source_scope(
