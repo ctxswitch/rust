@@ -4,9 +4,11 @@
 // Regression test for #80998.
 //
 // aux-build:metadata-sufficient-for-layout.rs
-// check-pass
 
-#![feature(type_alias_impl_trait)]
+// revisions: min_tait full_tait
+#![feature(min_type_alias_impl_trait, rustc_attrs)]
+#![cfg_attr(full_tait, feature(type_alias_impl_trait))]
+//[full_tait]~^ WARN incomplete
 #![feature(generator_trait)]
 
 extern crate metadata_sufficient_for_layout;
@@ -18,6 +20,9 @@ type F = impl Generator<(), Yield = (), Return = ()>;
 // Static queries the layout of the generator.
 static A: Option<F> = None;
 
-fn f() -> F { metadata_sufficient_for_layout::g() }
+fn f() -> F {
+    metadata_sufficient_for_layout::g()
+}
 
-fn main() {}
+#[rustc_error]
+fn main() {} //~ ERROR

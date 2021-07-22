@@ -1,7 +1,9 @@
 // compile-flags: -Z mir-opt-level=3
-// build-pass
 
-#![feature(type_alias_impl_trait)]
+// revisions: min_tait full_tait
+#![feature(min_type_alias_impl_trait, rustc_attrs)]
+#![cfg_attr(full_tait, feature(type_alias_impl_trait))]
+//[full_tait]~^ WARN incomplete
 
 use std::marker::PhantomData;
 
@@ -43,6 +45,8 @@ impl<T: MyFrom<Phantom2<DummyT<U>>>, U> MyIndex<Phantom1<T>> for Scope<U> {
     }
 }
 
+#[rustc_error]
 fn main() {
+    //~^ ERROR
     let _pos: Phantom1<DummyT<()>> = Scope::new().my_index();
 }
